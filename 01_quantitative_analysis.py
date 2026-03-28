@@ -189,14 +189,16 @@ weekly_labels = [v for v in freq_vc.index if "daily" in v.lower() or "week" in v
 weekly_n = sum(freq_vc[v] for v in weekly_labels)
 printb(f"\nWeekly+ users: {weekly_n} ({weekly_n/len(freq)*100:.1f}% of those who answered)")
 
-# Exclude "I don't use..." to get AI-user subset
-ai_users = freq[~freq.str.contains("don't use|do not use|never", case=False, na=False)]
-printb(f"AI users (any frequency): {len(ai_users)} ({len(ai_users)/N*100:.1f}% of N)")
+# GPAI users: those who checked GPAI in Q1 (n=157)
+gpai_check_col = find_col(df, "general-purpose ai tools (e.g.")
+ai_mask = df[gpai_check_col] == True
+n_ai = ai_mask.sum()
+printb(f"GPAI users (checked in Q1): {n_ai}")
 
-# Role in life
+# Role in life — among GPAI users only
 role_col = find_col(df, "fit into your life")
-role = df[role_col].dropna()
-printb(f"\nRole of AI (n={len(role)}):")
+role = df.loc[ai_mask, role_col].dropna()
+printb(f"\nRole of AI among GPAI users (n={len(role)}):")
 role_vc = role.value_counts()
 for val, cnt in role_vc.items():
     printb(f"  {val}: {cnt} ({cnt/len(role)*100:.1f}%)")
@@ -209,11 +211,7 @@ printb("5. AI USE CASES (multi-select, among AI users)")
 printb("=" * 70)
 
 usecase_cols = find_cols(df, "mainly use general-purpose ai for", "(")
-# Filter to AI users only
-gpai_check_col = find_col(df, "general-purpose ai tools (e.g.")
-ai_mask = df[gpai_check_col] == True
-n_ai = ai_mask.sum()
-printb(f"AI users (checked GPAI in Q1): {n_ai}")
+printb(f"GPAI users (checked in Q1): {n_ai}")
 
 for col in usecase_cols:
     label = col.split("(")[-1].rstrip(")")
