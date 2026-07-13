@@ -1,21 +1,5 @@
-"""
-03_figures.py
-=============
-Generates publication-quality figures for the paper:
-  - Figure 1: Primary source of support (horizontal bar chart)
-  - Figure 2: Motivations for choosing GPAI (horizontal bar chart)
-  - Figure 3: Access change + wellbeing (three-panel: all respondents, no-support subgroup, wellbeing)
-  - Figure 4: Qualitative themes (horizontal bar chart)
-
-Usage:
-    python 03_figures.py
-
-Input:  ../data/UK survey_Submissions_2026-03-16.csv
-        ../results/qualitative_summary.txt (for Figure 4)
-Output: ../results/fig1_primary_source.png
-        ../results/fig2_why_ai.png
-        ../results/fig3_access_change.png
-        ../results/fig4_qualitative_themes.png
+"""Figures for the survey paper (primary source, motivations, access change,
+qualitative themes). Writes PNGs to results/.
 """
 
 import os
@@ -26,14 +10,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH  = os.path.join(SCRIPT_DIR, "..", "data",
                           "UK survey_Submissions_2026-03-16.csv")
 OUT_DIR    = os.path.join(SCRIPT_DIR, "..", "results")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# ── Helper ───────────────────────────────────────────────────────────────────
+# Helper
 def find_col(df, *keywords):
     for c in df.columns:
         cl = c.lower()
@@ -41,7 +25,7 @@ def find_col(df, *keywords):
             return c
     raise KeyError(f"No column found matching keywords: {keywords}")
 
-# ── Style ────────────────────────────────────────────────────────────────────
+# Style
 plt.rcParams.update({
     "font.family": "sans-serif",
     "font.size": 11,
@@ -59,13 +43,11 @@ GRAY        = "#9CA3AF"
 GRAY_LIGHT  = "#D1D5DB"
 DARK        = "#374151"
 
-# ── Load data ────────────────────────────────────────────────────────────────
+# Load data
 df = pd.read_csv(DATA_PATH)
 N = len(df)
 
-# ══════════════════════════════════════════════════════════════════════════════
 # FIGURE 1: Primary source of support
-# ══════════════════════════════════════════════════════════════════════════════
 
 primary_col = find_col(df, "which one", "relied")
 primary = df[primary_col].dropna()
@@ -155,9 +137,7 @@ fig.savefig(os.path.join(OUT_DIR, "fig1_primary_source.png"), dpi=300, bbox_inch
 plt.close()
 print("\u2713 Figure 1 saved")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # FIGURE 2: Motivations for choosing GPAI
-# ══════════════════════════════════════════════════════════════════════════════
 
 gpai_col = find_col(df, "general-purpose ai tools (e.g.")
 ai_mask = df[gpai_col] == True
@@ -209,9 +189,7 @@ fig.savefig(os.path.join(OUT_DIR, "fig2_why_ai.png"), dpi=300, bbox_inches="tigh
 plt.close()
 print("\u2713 Figure 2 saved")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # FIGURE 3: Access change (all respondents vs no-support subgroup) + wellbeing
-# ══════════════════════════════════════════════════════════════════════════════
 
 access_col = find_col(df, "access to support changed")
 access_order = ["Much better", "A bit better", "About the same", "A bit worse", "Much worse"]
@@ -305,9 +283,7 @@ fig.savefig(os.path.join(OUT_DIR, "fig3_access_change.png"), dpi=300, bbox_inche
 plt.close()
 print("\u2713 Figure 3 saved")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # FIGURE 4: Qualitative themes
-# ══════════════════════════════════════════════════════════════════════════════
 
 # Run qualitative coding inline to get theme counts
 import re, sys

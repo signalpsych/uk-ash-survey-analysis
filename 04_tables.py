@@ -1,32 +1,19 @@
-"""
-04_tables.py
-============
-Generates CSV versions of the three tables reported in the paper:
-  - Table 1: Sample characteristics (age, region)
-  - Table 2: Sources of support (multi-select + primary)
-  - Table 3: AI use patterns (frequency, role, use cases, motivations)
-
-Usage:
-    python 04_tables.py
-
-Input:  ../data/UK survey_Submissions_2026-03-16.csv
-Output: ../results/table1_sample.csv
-        ../results/table2_sources.csv
-        ../results/table3_ai_use.csv
+"""Tables 1-3 as CSVs (sample characteristics, support sources, AI use
+patterns). Writes to results/.
 """
 
 import os
 import pandas as pd
 import numpy as np
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH  = os.path.join(SCRIPT_DIR, "..", "data",
                           "UK survey_Submissions_2026-03-16.csv")
 OUT_DIR    = os.path.join(SCRIPT_DIR, "..", "results")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# ── Helper ───────────────────────────────────────────────────────────────────
+# Helper
 def find_col(df, *keywords):
     for c in df.columns:
         cl = c.lower()
@@ -34,13 +21,11 @@ def find_col(df, *keywords):
             return c
     raise KeyError(f"No column found matching keywords: {keywords}")
 
-# ── Load data ────────────────────────────────────────────────────────────────
+# Load data
 df = pd.read_csv(DATA_PATH)
 N = len(df)
 
-# ══════════════════════════════════════════════════════════════════════════════
 # TABLE 1: Sample characteristics
-# ══════════════════════════════════════════════════════════════════════════════
 
 age_col = find_col(df, "age")
 region_col = find_col(df, "region")
@@ -62,11 +47,9 @@ for val, cnt in region_vc.items():
 
 table1 = pd.DataFrame(rows)
 table1.to_csv(os.path.join(OUT_DIR, "table1_sample.csv"), index=False)
-print(f"✓ Table 1 saved ({len(table1)} rows)")
+print(f"Table 1 saved ({len(table1)} rows)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # TABLE 2: Sources of support
-# ══════════════════════════════════════════════════════════════════════════════
 
 # Multi-select columns (cols 6-16)
 checkbox_cols = df.columns[6:17]
@@ -148,11 +131,9 @@ table2 = pd.DataFrame(rows2)
 table2 = table2[(table2["Multi-select n"] > 0) | (table2["Primary n"] > 0)]
 table2 = table2.sort_values("Multi-select n", ascending=False)
 table2.to_csv(os.path.join(OUT_DIR, "table2_sources.csv"), index=False)
-print(f"✓ Table 2 saved ({len(table2)} rows)")
+print(f"Table 2 saved ({len(table2)} rows)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # TABLE 3: AI use patterns (among AI users)
-# ══════════════════════════════════════════════════════════════════════════════
 
 gpai_col = find_col(df, "general-purpose ai tools (e.g.")
 ai_mask = df[gpai_col] == True
@@ -196,6 +177,6 @@ for col in motiv_cols:
 
 table3 = pd.DataFrame(rows3)
 table3.to_csv(os.path.join(OUT_DIR, "table3_ai_use.csv"), index=False)
-print(f"✓ Table 3 saved ({len(table3)} rows)")
+print(f"Table 3 saved ({len(table3)} rows)")
 
 print(f"\nAll tables saved to {OUT_DIR}")

@@ -1,15 +1,5 @@
-"""
-01_quantitative_analysis.py
-===========================
-Quantitative analysis of the UK Ash user survey (N=393).
-Produces all descriptive statistics reported in the paper, printed to stdout
-and saved to results/quantitative_summary.txt.
-
-Usage:
-    python 01_quantitative_analysis.py
-
-Input:  ../data/UK survey_Submissions_2026-03-16.csv
-Output: ../results/quantitative_summary.txt
+"""Descriptive statistics for the UK Ash user survey (N=393).
+Reads the raw Tally export from data/ and writes results/quantitative_summary.txt.
 """
 
 import os, sys
@@ -17,7 +7,7 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH  = os.path.join(SCRIPT_DIR, "..", "data",
                           "UK survey_Submissions_2026-03-16.csv")
@@ -25,7 +15,7 @@ OUT_DIR    = os.path.join(SCRIPT_DIR, "..", "results")
 os.makedirs(OUT_DIR, exist_ok=True)
 OUT_PATH   = os.path.join(OUT_DIR, "quantitative_summary.txt")
 
-# ── Helper: find column by keyword ───────────────────────────────────────────
+# Helper: find column by keyword
 def find_col(df, *keywords):
     """Return the first column whose name contains ALL keywords (case-insensitive)."""
     for c in df.columns:
@@ -38,7 +28,7 @@ def find_cols(df, *keywords):
     """Return ALL columns whose names contain ALL keywords (case-insensitive)."""
     return [c for c in df.columns if all(k.lower() in c.lower() for k in keywords)]
 
-# ── Load data ────────────────────────────────────────────────────────────────
+# Load data
 df = pd.read_csv(DATA_PATH)
 N = len(df)
 
@@ -53,9 +43,7 @@ def printb(*args, **kwargs):
     sys.stdout.write(text)
     output_lines.append(text)
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 1. SAMPLE CHARACTERISTICS
-# ══════════════════════════════════════════════════════════════════════════════
 printb("=" * 70)
 printb("1. SAMPLE CHARACTERISTICS")
 printb("=" * 70)
@@ -66,7 +54,7 @@ substantive = df.iloc[:, 5:]
 blank_counts = substantive.isnull().sum(axis=1)
 complete = (blank_counts <= 5).sum()
 printb(f"Completed all items (≤5 blanks): {complete} ({complete/N*100:.1f}%)")
-printb(f"Response rate: 393 / 1,178 eligible = {393/1178*100:.1f}%")
+printb(f"Response rate: 393 / 7,415 invited = {393/7415*100:.1f}%")
 
 # Age
 age_col = find_col(df, "age")
@@ -84,9 +72,7 @@ region_vc = df[region_col].value_counts()
 for val, cnt in region_vc.items():
     printb(f"  {val}: {cnt} ({cnt/n_region*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 2. WHERE USERS TURNED (multi-select, Q1 checkbox columns)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("2. WHERE USERS TURNED FOR SUPPORT (multi-select)")
 printb("=" * 70)
@@ -117,9 +103,7 @@ for col in checkbox_cols:
     n_valid = df[col].notna().sum()
     printb(f"  {label:<43} {n:>5} {n/n_valid*100:>6.1f}%")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 3. PRIMARY SOURCE (single-select, Q2)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("3. PRIMARY SOURCE OF SUPPORT (single-select)")
 printb("=" * 70)
@@ -170,9 +154,7 @@ printb(f"\nCombined GPAI + no support: {combined} ({combined/len(primary)*100:.1
 prof_n = primary_vc.get("Private therapist / counsellor", 0) + primary_vc.get("NHS services", 0)
 printb(f"Professional support (therapist + NHS): {prof_n} ({prof_n/len(primary)*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 4. AI USE FREQUENCY & ROLE (among AI users)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("4. GENERAL-PURPOSE AI USE PATTERNS")
 printb("=" * 70)
@@ -203,9 +185,7 @@ role_vc = role.value_counts()
 for val, cnt in role_vc.items():
     printb(f"  {val}: {cnt} ({cnt/len(role)*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 5. AI USE CASES (multi-select, Q4 checkboxes)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("5. AI USE CASES (multi-select, among AI users)")
 printb("=" * 70)
@@ -218,9 +198,7 @@ for col in usecase_cols:
     n = df.loc[ai_mask, col].sum() if df[col].dtype == bool else (df.loc[ai_mask, col] == True).sum()
     printb(f"  {label:<45} {n:>4} ({n/n_ai*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 6. MOTIVATIONS FOR AI USE (multi-select, Q5 checkboxes)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("6. MOTIVATIONS FOR CHOOSING AI (multi-select, among AI users)")
 printb("=" * 70)
@@ -231,9 +209,7 @@ for col in motiv_cols:
     n = df.loc[ai_mask, col].sum() if df[col].dtype == bool else (df.loc[ai_mask, col] == True).sum()
     printb(f"  {label:<45} {n:>4} ({n/n_ai*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 7. ACCESS CHANGE (Q6)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("7. ACCESS TO SUPPORT CHANGE")
 printb("=" * 70)
@@ -257,9 +233,7 @@ access_nosup_vc = access_nosup.value_counts()
 for val, cnt in access_nosup_vc.items():
     printb(f"  {val}: {cnt} ({cnt/len(access_nosup)*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 8. WELLBEING (Q8)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("8. GENERAL WELLBEING (past month)")
 printb("=" * 70)
@@ -271,9 +245,7 @@ well_vc = well.value_counts()
 for val, cnt in well_vc.items():
     printb(f"  {val}: {cnt} ({cnt/len(well)*100:.1f}%)")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 9. RETURN TO ASH (Q7)
-# ══════════════════════════════════════════════════════════════════════════════
 printb("\n" + "=" * 70)
 printb("9. LIKELIHOOD OF RETURNING TO ASH")
 printb("=" * 70)
@@ -288,7 +260,7 @@ for val, cnt in ret_vc.items():
 likely = sum(ret_vc.get(k, 0) for k in ret_vc.index if "likely" in k.lower() and "unlikely" not in k.lower())
 printb(f"\nLikely to return (any 'likely'): {likely} ({likely/len(ret)*100:.1f}%)")
 
-# ── Save ─────────────────────────────────────────────────────────────────────
+# Save
 with open(OUT_PATH, "w") as f:
     f.writelines(output_lines)
-printb(f"\n✓ Summary saved to {OUT_PATH}")
+printb(f"\nSummary saved to {OUT_PATH}")

@@ -1,29 +1,16 @@
-"""
-02_qualitative_coding.py
-========================
-Hybrid inductive-deductive qualitative coding of free-text responses
-(Q9: "Is there anything you're using now that works better—or worse—than
-Ash did for you?").
+"""Coding of free-text survey responses (Q9).
 
-Approach:
-  - AI-assisted keyword-pattern matching with iteratively refined code lists
-  - 15 non-mutually-exclusive thematic codes across 6 domains
-  - Three coding passes with expanding patterns for recall improvement
-  - Uncoded responses flagged for human review
-
-Usage:
-    python 02_qualitative_coding.py
-
-Input:  ../data/UK survey_Submissions_2026-03-16.csv
-Output: ../results/coded_responses.csv
-        ../results/qualitative_summary.txt
+Applies the study codebook (15 codes, regex patterns per code) to all
+analyzable responses, with manually reviewed reclassifications where
+patterns missed clearly codable content. Writes results/coded_responses.csv
+and results/qualitative_summary.txt.
 """
 
 import os, re, sys
 import pandas as pd
 import numpy as np
 
-# ── Paths ────────────────────────────────────────────────────────────────────
+# Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH  = os.path.join(SCRIPT_DIR, "..", "data",
                           "UK survey_Submissions_2026-03-16.csv")
@@ -32,7 +19,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 CODED_PATH = os.path.join(OUT_DIR, "coded_responses.csv")
 SUMMARY_PATH = os.path.join(OUT_DIR, "qualitative_summary.txt")
 
-# ── Load data ────────────────────────────────────────────────────────────────
+# Load data
 df = pd.read_csv(DATA_PATH)
 # Find free-text column (Q9)
 freetext_col = [c for c in df.columns if "better" in c.lower() and "worse" in c.lower()][0]
@@ -43,15 +30,13 @@ responses = responses[responses["text"].str.strip().str.len() > 5].copy()
 
 print(f"Free-text responses to code: {len(responses)}")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # CODEBOOK: 15 codes across 6 thematic domains
-# ══════════════════════════════════════════════════════════════════════════════
 # Each code has a list of regex patterns. A response is assigned a code if
 # ANY pattern matches (case-insensitive). Patterns were developed inductively
 # from reading responses and refined over three coding passes.
 
 CODEBOOK = {
-    # ── Domain 1: GPAI Experience ──────────────────────────────────────────
+    # Domain 1: GPAI Experience
     "T1_GPAI_INFERIOR": [
         r"chatgpt.{0,30}(not|isn.t|wasn.t|doesn.t|lacks?|miss|worse|poor|generic|impersonal|cold|limit|shallow|superfic)",
         r"(gpt|gemini|claude|copilot|ai).{0,30}(not|isn.t|doesn.t|lacks?|miss|worse|poor|generic|impersonal|cold|limit|shallow|superfic|pale|rubbish|terrible|awful|hopeless|useless|nowhere near|can.t compare|not the same|no substitute|nothing like|inferior|inadequate|no comparison|disappointing|frustrat)",
@@ -87,7 +72,7 @@ CODEBOOK = {
         # Removed: "created an agent AI" pattern — too broad, catches non-evaluative mentions
     ],
 
-    # ── Domain 2: Support Gap ──────────────────────────────────────────────
+    # Domain 2: Support Gap
     "T3_NO_REPLACEMENT_FOUND": [
         r"no(thing|t| |\b).{0,20}(work|help|replac|compar|substitute|alternative|option|match|equivalent)",
         r"(haven.t|have not|not).{0,15}found.{0,15}(any|replace|alternative|substitute|support)",
@@ -151,7 +136,7 @@ CODEBOOK = {
         r"(human|real).{0,10}(being|person|relationship|support).{0,10}(irl|in real life|is |are )?(prefer|better|good)",
     ],
 
-    # ── Domain 3: What Ash Provided ────────────────────────────────────────
+    # Domain 3: What Ash Provided
     "T7_MEMORY_CONTINUITY": [
         r"(ash|chatgpt|gpt|gemini|claude|copilot|ai|app|tool).{0,30}(remember|recall|knew|know me|context|history|continuity|follow.up|personaliz|personalis|tailor|adapted|learned about)",
         r"(remember|memory|context|continuity|personaliz|personalis|persistent|tailored).{0,20}(ash|chatgpt|gpt|gemini|claude|copilot|ai|app|session|conversation)",
@@ -207,7 +192,7 @@ CODEBOOK = {
         r"(less|not|no|without).{0,5}(judg|judge ?mental)",
     ],
 
-    # ── Domain 4: Distress / Loss ──────────────────────────────────────────
+    # Domain 4: Distress / Loss
     "T11_DISTRESS_AT_LOSS": [
         # Explicit distress language
         r"(devastat|gutted|heartbr|grief|griev|mourn|bereft|desperate|despairing|helpless|hopeless|crushed|shattered|struggling without|suffering)",
@@ -233,7 +218,7 @@ CODEBOOK = {
         r"(shame|disappointing|disappointed).{0,10}(ash|it|that|gone|removed|unavailable|taken away|closed|not available)",
     ],
 
-    # ── Domain 5: Workarounds ──────────────────────────────────────────────
+    # Domain 5: Workarounds
     "T12_VPN_WORKAROUND": [
         r"vpn",
         r"(still|continu).{0,10}(use|using|access).{0,10}(ash|slingshot|it|the app)",
@@ -264,7 +249,7 @@ CODEBOOK = {
         r"\bthc\b",
     ],
 
-    # ── Domain 6: Ash Critique ─────────────────────────────────────────────
+    # Domain 6: Ash Critique
     "T13_ASH_CRITIQUE": [
         r"ash.{0,30}(repetit|generic|scripted|robotic|rigid|inflexible|basic|superfic|patroni[sz]|condescend|tedious|clunky|stilted|annoying|frustrat|slow|bug|glitch|crash)",
         r"(ash|slingshot).{0,20}(problem|issue|downside|weakness|limitation|flaw|complaint|frustrat|disappoint|annoy)",
@@ -282,9 +267,7 @@ CODEBOOK = {
     ],
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
 # CODING ENGINE
-# ══════════════════════════════════════════════════════════════════════════════
 
 def code_response(text):
     """Apply all codes to a single response. Returns list of matching code names."""
@@ -306,38 +289,35 @@ responses["codes_str"] = responses["codes"].apply(
 )
 responses["n_codes"] = responses["codes"].apply(len)
 
-# ══════════════════════════════════════════════════════════════════════════════
 # MANUAL OVERRIDES (lead author review)
-# ══════════════════════════════════════════════════════════════════════════════
-# The following responses were reviewed by the lead author and manually coded
-# where regex patterns did not match but the content clearly fits a theme.
-# orig_idx refers to the row index in the original survey dataframe.
+# Reviewed by CAS; assigned where patterns missed clearly codable content.
+# Keys are row indices in the raw survey dataframe.
 
 MANUAL_OVERRIDES = {
-    9:   ["T3_NO_REPLACEMENT_FOUND"],            # "I haven't got the help I need"
-    18:  ["T3_NO_REPLACEMENT_FOUND"],            # "Bottling things up as i have no one to talk to"
-    21:  ["T10_PRIVACY_TRUST_SAFETY"],           # "Less judge mental than a human"
-    43:  ["T2_GPAI_ADEQUATE"],                   # "not sure Ash was very different to a ChatGPT session"
-    63:  ["T2_GPAI_ADEQUATE"],                   # "Claude leads to better responses"
-    70:  ["T6_HUMAN_ACCESSED"],                  # "human being IRL is preferable...not accessible"
-    85:  ["T15_SELF_MANAGE_INFORMAL"],           # "AI Support" (bare mention of using AI)
-    95:  ["T15_SELF_MANAGE_INFORMAL"],           # "THC vape"
-    103: ["T8_INSIGHTS_REFLECTIONS"],            # "Ash quite calming and measured"
-    127: ["T3_NO_REPLACEMENT_FOUND"],            # "helpful having an additional source...hard to come by"
-    146: ["T3_NO_REPLACEMENT_FOUND"],            # "Id love to have Ash back"
-    150: ["T13_ASH_CRITIQUE"],                   # "doesn't support other languages"
-    172: ["T2_GPAI_ADEQUATE"],                   # "Gemini has a wider knowledge of me"
-    195: ["T14_OTHER_WELLBEING_APP"],            # "leaning on more static resources"
-    243: ["T7_MEMORY_CONTINUITY"],               # "liked that I had a whole separate App"
-    268: ["T15_SELF_MANAGE_INFORMAL"],           # "created an agent AI" (using GPAI, not evaluating)
-    295: ["T3_NO_REPLACEMENT_FOUND"],            # "trying to lessen my phone use"
-    315: ["T3_NO_REPLACEMENT_FOUND"],            # "no I think the app is very good"
-    350: ["T7_MEMORY_CONTINUITY", "T8_INSIGHTS_REFLECTIONS"],  # "liked the follow ups"
-    351: ["T3_NO_REPLACEMENT_FOUND"],            # "not really, more busy than usual"
-    367: ["T15_SELF_MANAGE_INFORMAL"],           # "A new boyfriend"
-    369: ["T3_NO_REPLACEMENT_FOUND"],            # "wasn't able to use Ash for very long"
-    381: ["T15_SELF_MANAGE_INFORMAL"],           # "used Chat GPT, spoken to people" (coping, not eval)
-    385: ["T1_GPAI_INFERIOR"],                   # "more specific, enhanced version of ChatGPT/Claude"
+    9:   ["T3_NO_REPLACEMENT_FOUND"],            # unmet need for help
+    18:  ["T3_NO_REPLACEMENT_FOUND"],            # keeping feelings inside; no one to talk to
+    21:  ["T10_PRIVACY_TRUST_SAFETY"],           # AI felt less judgmental than a person
+    43:  ["T2_GPAI_ADEQUATE"],                   # saw little difference from a general-purpose AI session
+    63:  ["T2_GPAI_ADEQUATE"],                   # preferred another assistant's responses
+    70:  ["T6_HUMAN_ACCESSED"],                  # prefers in-person support; not accessible
+    85:  ["T15_SELF_MANAGE_INFORMAL"],           # bare mention of AI support
+    95:  ["T15_SELF_MANAGE_INFORMAL"],           # substance-based coping
+    103: ["T8_INSIGHTS_REFLECTIONS"],            # found Ash calming and measured
+    127: ["T3_NO_REPLACEMENT_FOUND"],            # valued Ash as an additional, hard-to-find support
+    146: ["T3_NO_REPLACEMENT_FOUND"],            # wants Ash back
+    150: ["T13_ASH_CRITIQUE"],                   # missing language support
+    172: ["T2_GPAI_ADEQUATE"],                   # another assistant knows them better
+    195: ["T14_OTHER_WELLBEING_APP"],            # shifted to static self-help resources
+    243: ["T7_MEMORY_CONTINUITY"],               # valued having a dedicated app
+    268: ["T15_SELF_MANAGE_INFORMAL"],           # built a custom assistant (use, not evaluation)
+    295: ["T3_NO_REPLACEMENT_FOUND"],            # cutting down phone use
+    315: ["T3_NO_REPLACEMENT_FOUND"],            # brief praise, no alternative named
+    350: ["T7_MEMORY_CONTINUITY", "T8_INSIGHTS_REFLECTIONS"],  # valued follow-up prompts
+    351: ["T3_NO_REPLACEMENT_FOUND"],            # no alternative; busier than usual
+    367: ["T15_SELF_MANAGE_INFORMAL"],           # new relationship as support
+    369: ["T3_NO_REPLACEMENT_FOUND"],            # little chance to use Ash before withdrawal
+    381: ["T15_SELF_MANAGE_INFORMAL"],           # uses general AI and talks to people (coping)
+    385: ["T1_GPAI_INFERIOR"],                   # called Ash an enhanced version of general tools
 }
 
 for orig_idx, override_codes in MANUAL_OVERRIDES.items():
@@ -356,9 +336,7 @@ responses["codes_str"] = responses["codes"].apply(
 )
 responses["n_codes"] = responses["codes"].apply(len)
 
-# ══════════════════════════════════════════════════════════════════════════════
 # SUMMARY STATISTICS
-# ══════════════════════════════════════════════════════════════════════════════
 output_lines = []
 def printb(*args, **kwargs):
     import io
@@ -413,10 +391,10 @@ for domain, codes in domains.items():
     dn = domain_mask.sum()
     printb(f"  {domain:<33} {dn:>5} ({dn/total*100:.1f}%)")
 
-# ── Save outputs ─────────────────────────────────────────────────────────────
+# Save outputs
 responses[["orig_idx", "text", "codes_str"]].to_csv(CODED_PATH, index=False)
-printb(f"\n✓ Coded responses saved to {CODED_PATH}")
+printb(f"\nCoded responses saved to {CODED_PATH}")
 
 with open(SUMMARY_PATH, "w") as f:
     f.writelines(output_lines)
-printb(f"✓ Summary saved to {SUMMARY_PATH}")
+printb(f"Summary saved to {SUMMARY_PATH}")

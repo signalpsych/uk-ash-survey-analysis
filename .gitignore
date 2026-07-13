@@ -16,3 +16,7 @@ __pycache__/
 # Notebooks (optional, regenerable from scripts)
 *.ipynb
 .ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
